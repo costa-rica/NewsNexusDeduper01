@@ -43,7 +43,7 @@ NewsNexusDeduper01/
      - ArticleApproveds table has `content` column
      - SHA-1 for exact matches, SimHash/MinHash for near-duplicates.
      - Populate `contentHash` similarity values.
-  3. **Embedding Search (future)**
+  3. **Embedding Search**
      - Sentence-transformer embeddings + cosine similarity (or FAISS).
      - Populate `embeddingSearch`.
   4. **Event Signature Matching (future)**
@@ -59,3 +59,19 @@ NewsNexusDeduper01/
 - Database efficiency: use `executemany` batches with WAL mode.
 - Logging & monitoring: each run can log number of rows processed.
 - Future expansions: add `DeduperRuns` table for metadata (CSV hash, run timestamps, counts).
+
+## Embedding Search Implementation
+
+1. src/metrics/embeddings.py - Full embedding similarity module with:
+
+- Sentence transformer integration using all-MiniLM-L6-v2 model
+- Cosine similarity calculation (0.0-1.0 range)
+- Smart embedding caching (774 unique articles cached)
+- Dual progress bars: Individual batch + overall progress
+- Real-time similarity score display
+
+2. Enhanced src/main.py with:
+
+- embeddingsearch subcommand with --model, --batch-size, --force options
+- Integration with status command showing embedding progress
+- Error handling for missing dependencies
