@@ -147,3 +147,56 @@ class DatabaseManager:
         """
         result = self.execute_query(query, new_article_ids)
         return result[0]['count']
+
+    def get_articles_for_url_check(self, batch_size: int = 1000) -> List[sqlite3.Row]:
+        """Get article pairs that need URL checking (urlCheck is NULL)"""
+        query = """
+        SELECT
+            adr.id,
+            adr.articleIdNew,
+            adr.articleIdApproved,
+            a1.url as urlNew,
+            a2.url as urlApproved
+        FROM ArticleDuplicateRatings adr
+        JOIN Articles a1 ON a1.id = adr.articleIdNew
+        JOIN Articles a2 ON a2.id = adr.articleIdApproved
+        WHERE adr.urlCheck IS NULL
+        LIMIT ?
+        """
+        return self.execute_query(query, (batch_size,))
+
+    def update_url_check_batch(self, url_check_updates: List[Tuple[float, int]]) -> int:
+        """Update urlCheck values for multiple rating IDs"""
+        if not url_check_updates:
+            return 0
+
+        query = """
+        UPDATE ArticleDuplicateRatings
+        SET urlCheck = ?, updatedAt = datetime('now')
+        WHERE id = ?
+        """
+        return self.execute_many(query, url_check_updates)
+
+    def get_url_check_stats(self) -> Dict[str, int]:
+        """Get statistics about URL check progress"""
+        stats = {}
+
+        # Total pairs
+        query = "SELECT COUNT(*) as count FROM ArticleDuplicateRatings"
+        result = self.execute_query(query)
+        stats['total_pairs'] = result[0]['count']
+
+        # Pairs with URL check completed
+        query = "SELECT COUNT(*) as count FROM ArticleDuplicateRatings WHERE urlCheck IS NOT NULL"
+        result = self.execute_query(query)
+        stats['url_check_completed'] = result[0]['count']
+
+        # Pairs pending URL check
+        stats['url_check_pending'] = stats['total_pairs'] - stats['url_check_completed']
+
+        # Matching URLs (urlCheck = 1)
+        query = "SELECT COUNT(*) as count FROM ArticleDuplicateRatings WHERE urlCheck = 1"
+        result = self.execute_query(query)
+        stats['matching_urls'] = result[0]['count']
+
+        return stats

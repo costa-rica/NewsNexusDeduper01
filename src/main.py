@@ -12,6 +12,7 @@ from pathlib import Path
 
 from config import Config
 from services.pair_indexer import PairIndexer
+from services.urlcheck import URLCheckService
 from utils.timing import timer
 
 
@@ -33,6 +34,11 @@ def main():
 
     # Status command
     status_parser = subparsers.add_parser('status', help='Show current status and counts')
+
+    # URL Check command
+    urlcheck_parser = subparsers.add_parser('urlcheck', help='Compute URL similarity scores')
+    urlcheck_parser.add_argument('--batch-size', type=int, default=1000, help='Batch size for processing (default: 1000)')
+    urlcheck_parser.add_argument('--force', action='store_true', help='Recompute all URL scores, even existing ones')
 
     args = parser.parse_args()
 
@@ -72,6 +78,23 @@ def main():
             print(f"Unique new articles: {status['unique_new_articles']}")
             print(f"Unique approved articles: {status['unique_approved_articles']}")
             print(f"Articles from CSV loaded: {status['csv_articles_loaded']}")
+
+            # Add URL check status
+            url_service = URLCheckService(config)
+            url_status = url_service.get_url_check_status()
+            print(f"URL check completed: {url_status['url_check_completed']} ({url_status['completion_percentage']}%)")
+            print(f"URL matches found: {url_status['matching_urls']} ({url_status['match_percentage']}%)")
+
+        elif args.command == 'urlcheck':
+            url_service = URLCheckService(config)
+
+            with timer("Computing URL similarity scores"):
+                result = url_service.compute_url_check_scores(
+                    batch_size=args.batch_size,
+                    force=args.force
+                )
+                print(f"Processed {result['processed_pairs']} pairs")
+                print(f"Found {result['url_matches_found']} URL matches ({result['match_rate']}% match rate)")
 
         return 0
 
