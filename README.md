@@ -82,6 +82,63 @@ python main.py reset --confirm
 
 **Warning:** This permanently deletes all duplicate rating data. The `--confirm` flag is required as a safety measure.
 
+#### 4. Compute URL Similarity
+
+Compute URL similarity scores by comparing canonicalized URLs between article pairs:
+
+**Process all pending URL comparisons:**
+
+```bash
+python main.py urlcheck
+```
+
+**Recompute all URL scores (including existing ones):**
+
+```bash
+python main.py urlcheck --force
+```
+
+**Custom batch size for processing:**
+
+```bash
+python main.py urlcheck --batch-size 500
+```
+
+The urlcheck command:
+
+- Processes article pairs where `urlCheck` is NULL
+- Canonicalizes URLs by removing protocol, www, trailing slashes, etc.
+- Compares canonicalized URLs for exact matches
+- Sets `urlCheck` to 1.0 for exact matches, 0.0 for non-matches
+- Processes in configurable batches (default: 1000 pairs)
+- Updates progress statistics shown in `status` command
+
+#### 5. Compute Content Hash Similarity
+
+Compute content hash similarity scores by comparing normalized headline and text content:
+
+**Process all pending content hash comparisons:**
+
+```bash
+python main.py contenthash
+```
+
+**Recompute all content hash scores (including existing ones):**
+
+```bash
+python main.py contenthash --force
+```
+
+The contenthash command:
+
+- Processes article pairs where `contentHash` is NULL
+- Uses `headlineForPdfReport` and `textForPdfReport` from ArticleApproveds table
+- Normalizes text by converting to lowercase, removing punctuation, and collapsing whitespace
+- Generates SHA-256 hashes of combined headline and text content
+- Sets `contentHash` to 1.0 for exact content matches, 0.0 for non-matches
+- Processes in batches of 1000 pairs with progress reporting
+- Updates progress statistics shown in `status` command
+
 ### Help Commands
 
 Get help for any command:
@@ -91,6 +148,8 @@ python main.py --help
 python main.py load --help
 python main.py reset --help
 python main.py status --help
+python main.py urlcheck --help
+python main.py contenthash --help
 ```
 
 ### Prerequisites

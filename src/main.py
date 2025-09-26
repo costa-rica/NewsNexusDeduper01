@@ -13,6 +13,8 @@ from pathlib import Path
 from config import Config
 from services.pair_indexer import PairIndexer
 from services.urlcheck import URLCheckService
+from metrics.text_hash import ContentHashProcessor
+from db import DatabaseManager
 from utils.timing import timer
 
 
@@ -40,6 +42,10 @@ def main():
     urlcheck_parser.add_argument('--batch-size', type=int, default=1000, help='Batch size for processing (default: 1000)')
     urlcheck_parser.add_argument('--force', action='store_true', help='Recompute all URL scores, even existing ones')
 
+    # Content Hash command
+    contenthash_parser = subparsers.add_parser('contenthash', help='Compute content hash similarity scores')
+    contenthash_parser.add_argument('--force', action='store_true', help='Recompute all content hash scores, even existing ones')
+
     args = parser.parse_args()
 
     if not args.command:
@@ -49,6 +55,7 @@ def main():
     try:
         config = Config()
         pair_indexer = PairIndexer(config)
+        db_manager = DatabaseManager(config)
 
         if args.command == 'load':
             csv_path = args.csv_path or config.PATH_TO_CSV
@@ -85,6 +92,14 @@ def main():
             print(f"URL check completed: {url_status['url_check_completed']} ({url_status['completion_percentage']}%)")
             print(f"URL matches found: {url_status['matching_urls']} ({url_status['match_percentage']}%)")
 
+            # Add content hash status
+            content_processor = ContentHashProcessor(db_manager)
+            content_stats = content_processor.get_content_hash_stats()
+            completion_pct = (content_stats['content_hash_completed'] * 100) // content_stats['total_pairs'] if content_stats['total_pairs'] > 0 else 0
+            match_pct = (content_stats['matching_content'] * 100) // content_stats['content_hash_completed'] if content_stats['content_hash_completed'] > 0 else 0
+            print(f"Content hash completed: {content_stats['content_hash_completed']} ({completion_pct}%)")
+            print(f"Content matches found: {content_stats['matching_content']} ({match_pct}%)")
+
         elif args.command == 'urlcheck':
             url_service = URLCheckService(config)
 
@@ -95,6 +110,35 @@ def main():
                 )
                 print(f"Processed {result['processed_pairs']} pairs")
                 print(f"Found {result['url_matches_found']} URL matches ({result['match_rate']}% match rate)")
+
+        elif args.command == 'contenthash':
+            content_processor = ContentHashProcessor(db_manager)
+
+            if args.force:
+                # Reset all contentHash values to NULL for recomputation
+                with timer("Resetting content hash values"):
+                    reset_query = "UPDATE ArticleDuplicateRatings SET contentHash = NULL WHERE contentHash IS NOT NULL"
+                    reset_count = db_manager.execute_update(reset_query)
+                    print(f"Reset {reset_count} existing content hash values for recomputation")
+
+            # Process all pending content hash computations
+            total_processed = 0
+            total_matches = 0
+
+            with timer("Computing content hash similarity scores"):
+                while True:
+                    batch_result = content_processor.process_content_hash_batch(batch_size=1000)
+
+                    if batch_result['processed'] == 0:
+                        break
+
+                    total_processed += batch_result['processed']
+                    total_matches += batch_result['matches']
+
+                    print(f"Batch: {batch_result['processed']} processed, {batch_result['matches']} matches, {batch_result['errors']} errors")
+
+                print(f"Total processed: {total_processed} pairs")
+                print(f"Total matches found: {total_matches} ({(total_matches * 100) // total_processed if total_processed > 0 else 0}% match rate)")
 
         return 0
 

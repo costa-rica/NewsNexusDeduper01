@@ -262,6 +262,27 @@ Multi-algorithm similarity scoring for duplicate detection.
 
 **Indexes**: Unique constraint on `(articleIdNew, articleIdApproved)` plus individual field indexes.
 
+#### ArticleApproved
+
+Tracks user approval status and PDF-report overrides for articles.
+
+**Model name**: `ArticleApproved` • **Table name**: `ArticleApproveds`
+
+| Field                       | Type     | Constraints                 | Description                             |
+| --------------------------- | -------- | --------------------------- | --------------------------------------- |
+| id                          | INTEGER  | PRIMARY KEY, AUTO_INCREMENT | Unique identifier                       |
+| userId                      | INTEGER  | NOT NULL, FOREIGN KEY       | Reference to User                       |
+| articleId                   | INTEGER  | NOT NULL, FOREIGN KEY       | Reference to Article                    |
+| isApproved                  | BOOLEAN  | DEFAULT true                | Approval status                         |
+| headlineForPdfReport        | STRING   | NULLABLE                    | Custom headline for PDF reports         |
+| publicationNameForPdfReport | STRING   | NULLABLE                    | Custom publication name for PDF reports |
+| publicationDateForPdfReport | DATEONLY | NULLABLE                    | Custom publication date for PDF reports |
+| textForPdfReport            | STRING   | NULLABLE                    | Custom text content for PDF reports     |
+| urlForPdfReport             | STRING   | NULLABLE                    | Custom URL for PDF reports              |
+| kmNotes                     | STRING   | NULLABLE                    | Knowledge management notes              |
+| createdAt                   | DATE     | NOT NULL                    | Timestamp                               |
+| updatedAt                   | DATE     | NOT NULL                    | Timestamp                               |
+
 ### Junction/Contract Tables
 
 The system uses extensive many-to-many relationships via dedicated junction tables:

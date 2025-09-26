@@ -39,7 +39,8 @@ NewsNexusDeduper01/
   1. **URL Canonicalization & Exact Match**
      - Canonicalize both URLs (from the `Articles` table).
      - Populate `urlCheck` = 1 if canonical URLs match, else 0.
-  2. **Text Content Hashing (future)**
+  2. **Text Content Hashing**
+     - ArticleApproveds table has `content` column
      - SHA-1 for exact matches, SimHash/MinHash for near-duplicates.
      - Populate `contentHash` similarity values.
   3. **Embedding Search (future)**
